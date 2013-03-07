@@ -349,7 +349,7 @@ class JfRouting(Routing):
         shortestPathLen = 0
 
         while len(q) > 0 and (self.k == 0 or pathsFound < self.k):
-            path = q.pop()
+            path = q.popleft()
 
             # if we're running ECMP and we encounter a path longer than shortest path, stop
             if shortestPathLen > 0 and len(path) > shortestPathLen:
@@ -373,6 +373,18 @@ class JfRouting(Routing):
 
         return pathsFound
 
+    def get_routes(self, src, dst):
+        if src == dst:
+            return [src]
+
+        self.build_graph(self.topo.links())
+
+        nPaths = self.bfs(src, dst)
+        if nPaths > 0:
+            return self.paths
+        else:
+            return None
+
 class KSPRouting(JfRouting):
     '''k-shortest-paths routing'''
 
@@ -381,15 +393,8 @@ class KSPRouting(JfRouting):
         super(KSPRouting, self).__init__(topo)
 
     def get_route(self, src, dst, hash_ = None):
-        if src == dst:
-            return [src]
-        
-        self.build_graph(self.topo.links())
-
-        nPaths = self.bfs(src, dst)
-        if nPaths > 0:
-            print "src: %s dst: %s" % (src, dst)
-            print "paths found: %d" % nPaths
+        self.get_routes(src, dst)
+        if len(self.paths) > 0:
             return choice(self.paths)
         else:
             return None
@@ -402,15 +407,8 @@ class ECMPRouting(JfRouting):
         super(ECMPRouting, self).__init__(topo)
 
     def get_route(self, src, dst, hash_):
-        if src == dst:
-            return [src]
-
-        self.build_graph(self.topo.links())
-
-        nPaths = self.bfs(src, dst)
-        if nPaths > 0:
-            print "src: %s dst: %s" % (src, dst)
-            print "paths found: %d" % nPaths
+        self.get_routes(src, dst)
+        if len(self.paths) > 0:
             return sorted(self.paths)[hash_ % len(self.paths)]
         else:
             return None
