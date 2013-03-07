@@ -512,7 +512,7 @@ class JellyfishTopo(StructuredTopo):
 
         # add the servers
         servers = []
-        for i in range(self.nServers):
+        for i in range(1, self.nServers + 1):
             host = self.id_gen(i, i)
             opts = self.def_nopts(host, self.LAYER_HOST)
             servers.append(self.addHost(host.name_str(), **opts))
@@ -520,7 +520,7 @@ class JellyfishTopo(StructuredTopo):
         # add the switches
         switches = []
         openPorts = []
-        for i in range(self.nSwitches):
+        for i in range(1, self.nSwitches + 1):
             switch = self.id_gen(i, 0xff)
             opts = self.def_nopts(switch, self.LAYER_EDGE)
             switches.append(self.addSwitch(switch.name_str(), **opts))

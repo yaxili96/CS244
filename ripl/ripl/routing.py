@@ -320,12 +320,9 @@ class HashedStructuredRouting(StructuredRouting):
         super(HashedStructuredRouting, self).__init__(topo, choose_hashed)
 # pylint: enable-msg=W0613
 
-class KSPRouting():
-    '''k-shortest-paths routing'''
-
+class JfRouting(Routing):
     def __init__(self, topo):
         self.topo = topo
-        self.k = 4
         self.paths = []
         self.graph = None
 
@@ -349,12 +346,22 @@ class KSPRouting():
         path = [src]
         q = deque()
         q.append(path)
+        shortestPathLen = 0
 
-        while len(q) > 0 and pathsFound < self.k:
+        while len(q) > 0 and (self.k == 0 or pathsFound < self.k):
             path = q.pop()
+
+            # if we're running ECMP and we encounter a path longer than shortest path, stop
+            if shortestPathLen > 0 and len(path) > shortestPathLen:
+                break
+            
             # if last node on path is the destination
             if path[-1] == dst:
                 # add to list of paths
+                if self.k == 0 and pathsFound == 0:
+                    # no paths found yet, store shortest path length
+                    # self.k == 0 means we're running ECMP
+                    shortestPathLen = len(path)
                 self.paths.append(path)
                 pathsFound += 1
             
@@ -366,6 +373,13 @@ class KSPRouting():
 
         return pathsFound
 
+class KSPRouting(JfRouting):
+    '''k-shortest-paths routing'''
+
+    def __init__(self, topo):
+        self.k = 4
+        super(KSPRouting, self).__init__(topo)
+
     def get_route(self, src, dst, hash_ = None):
         if src == dst:
             return [src]
@@ -374,6 +388,29 @@ class KSPRouting():
 
         nPaths = self.bfs(src, dst)
         if nPaths > 0:
+            print "src: %s dst: %s" % (src, dst)
+            print "paths found: %d" % nPaths
             return choice(self.paths)
+        else:
+            return None
+
+class ECMPRouting(JfRouting):
+    '''ECMP routing'''
+
+    def __init__(self, topo):
+        self.k = 0
+        super(ECMPRouting, self).__init__(topo)
+
+    def get_route(self, src, dst, hash_):
+        if src == dst:
+            return [src]
+
+        self.build_graph(self.topo.links())
+
+        nPaths = self.bfs(src, dst)
+        if nPaths > 0:
+            print "src: %s dst: %s" % (src, dst)
+            print "paths found: %d" % nPaths
+            return sorted(self.paths)[hash_ % len(self.paths)]
         else:
             return None

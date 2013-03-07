@@ -3,7 +3,7 @@
 from mininet.util import makeNumeric
 
 from ripl.routing import STStructuredRouting, RandomStructuredRouting
-from ripl.routing import HashedStructuredRouting, KSPRouting
+from ripl.routing import HashedStructuredRouting, KSPRouting, ECMPRouting
 
 
 # TODO: this code is duplicated from mininet/bin/mn, except for TOPOS/topos.
@@ -35,7 +35,8 @@ ROUTING = {
     'st': STStructuredRouting,
     'random': RandomStructuredRouting,
     'hashed': HashedStructuredRouting,
-    'ksp': KSPRouting
+    'ksp': KSPRouting,
+    'ecmp': ECMPRouting
 }
 
 def getRouting( routing_type, topo ):
