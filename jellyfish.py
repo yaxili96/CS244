@@ -30,6 +30,18 @@ import math
 
 parser = ArgumentParser(description="Jellyfish Tests")
 
+parser.add_argument('-t',
+                    dest="topo",
+                    action="store",
+                    help="Topology",
+                    default="jf")
+
+parser.add_argument('-r',
+                    dest="routing",
+                    action="store",
+                    help="Routing algorithm",
+                    default="ksp")
+
 parser.add_argument('-nse',
                     dest="nServers",
                     type=int,
@@ -53,10 +65,10 @@ parser.add_argument('-np',
 
 args = parser.parse_args()
 
-def experiment(exp="jf", routing="ksp"):
-    if exp == "jf":
+def experiment(tp="jf", routing="ksp"):
+    if tp == "jf":
         topo = JellyfishTopo(nServers=args.nServers,nSwitches=args.nSwitches,nPorts=args.nPorts)
-    elif exp == "ft":
+    elif tp == "ft":
         topo = FatTreeTopo(k=args.nPorts)
     
     print "Starting Mininet"
@@ -66,10 +78,10 @@ def experiment(exp="jf", routing="ksp"):
     print "Dumping node connections"
     dumpNodeConnections(net.hosts)
     
-    if exp == "jf":
-        pox_args = shlex.split("pox/pox.py riplpox.riplpox --topo=%s,%s,%s,%s --routing=%s --mode=reactive" % (exp, args.nServers, args.nSwitches, args.nPorts, routing))
-    elif exp == "ft":
-        pox_args = shlex.split("pox/pox.py riplpox.riplpox --topo=%s,%s --routing=%s --mode=reactive" % (exp, args.nPorts, routing))
+    if tp == "jf":
+        pox_args = shlex.split("pox/pox.py riplpox.riplpox --topo=%s,%s,%s,%s --routing=%s --mode=reactive" % (tp, args.nServers, args.nSwitches, args.nPorts, routing))
+    elif tp == "ft":
+        pox_args = shlex.split("pox/pox.py riplpox.riplpox --topo=%s,%s --routing=%s --mode=reactive" % (tp, args.nPorts, routing))
                 
     print "Starting RiplPox"
     p = Popen(pox_args)
@@ -91,4 +103,4 @@ def experiment(exp="jf", routing="ksp"):
     Popen("pgrep -f webserver.py | xargs kill -9", shell=True).wait()
 
 if __name__ == "__main__":
-    experiment()
+    experiment(tp=args.topo, routing=args.routing)
