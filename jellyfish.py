@@ -13,6 +13,8 @@ from mininet.cli import CLI
 
 from ripl.ripl.dctopo import FatTreeTopo, JellyfishTopo
 
+from ripl.ripl.routing import KSPRouting, ECMPRouting
+
 import shlex
 
 from subprocess import Popen, PIPE
@@ -65,6 +67,35 @@ parser.add_argument('-np',
 
 args = parser.parse_args()
 
+def increment_link_count(link, link_counts):
+    if link in link_counts:
+        link_counts[link] += 1
+    else:
+        link_counts[link] = 1
+
+# route is a list of nodes
+# link_counts is a dictionary of links to their path counts
+def parse_route(route, link_counts):
+    if len(route) == 0:
+        return
+    curr_start = route[0]
+    for i in range(1, len(route)):
+        node = route[i]
+        link = (curr_start, node)
+        increment_link_count(link, link_counts)
+        curr_start = node
+
+# routes is a list of lists of nodes
+# link_counts is a dictionary of links to their path counts
+def parse_routes(routes, link_counts):
+    for route in routes:
+        parse_route(route, link_counts)
+
+ROUTING = { 
+    'ksp' : KSPRouting,
+    'ecmp' : ECMPRouting
+}
+
 def experiment(tp="jf", routing="ksp"):
     if tp == "jf":
         topo = JellyfishTopo(nServers=args.nServers,nSwitches=args.nSwitches,nPorts=args.nPorts)
@@ -84,13 +115,27 @@ def experiment(tp="jf", routing="ksp"):
         pox_args = shlex.split("pox/pox.py riplpox.riplpox --topo=%s,%s --routing=%s --mode=reactive" % (tp, args.nPorts, routing))
                 
     print "Starting RiplPox"
-    p = Popen(pox_args)
+    with open(os.devnull, "w") as fnull:
+        p = Popen(pox_args, stdout=fnull, stderr=fnull)
     sleep(25)
 
-    print "Starting experiments"
-    net.pingAll()
+    print "Starting experiments for topo %s and routing %s" % (exp, routing)
+    #net.pingAll()
 
-    
+    link_counts = {}
+    routing_obj = ROUTING[routing](topo)
+    for i in range(1, args.nServers + 1):
+        src = 'h%d' % i
+        for j in range(1, args.nServers + 1):
+            if i == j:
+                # skip if same node
+                continue
+            dst = 'h%d' % j
+            routes = routing_obj.get_routes(src, dst)
+            # routes don't include the src and dst hosts, so pass those to parse
+            parse_routes(routes, link_counts)
+
+    print link_counts
 
     print "Stopping Mininet"
     net.stop()
