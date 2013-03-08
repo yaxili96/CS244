@@ -94,8 +94,8 @@ def experiment(exp="jf", routing="ksp"):
     net = Mininet(topo=topo, host=CPULimitedHost, link=TCLink, controller=RemoteController,autoSetMacs=True)
     net.start()
     
-    print "Dumping node connections"
-    dumpNodeConnections(net.hosts)
+    #print "Dumping node connections"
+    #dumpNodeConnections(net.hosts)
     
     if exp == "jf":
         pox_args = shlex.split("pox/pox.py riplpox.riplpox --topo=%s,%s,%s,%s --routing=%s --mode=reactive" % (exp, args.nServers, args.nSwitches, args.nPorts, routing))
@@ -119,9 +119,11 @@ def experiment(exp="jf", routing="ksp"):
                 # skip if same node
                 continue
             dst = 'h%d' % j
-            routes = routing_obj.get_routes(src, dst)
+            #routes = routing_obj.get_routes(src, dst)
             # routes don't include the src and dst hosts, so pass those to parse
-            parse_routes(routes, link_counts)
+            #parse_routes(routes, link_counts)
+            route = routing_obj.get_route(src, dst, 0)
+            parse_route(route, link_counts)
 
     print link_counts
 
