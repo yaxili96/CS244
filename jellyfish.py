@@ -59,11 +59,17 @@ parser.add_argument('-nsw',
                     default=20)
 
 parser.add_argument('-np',
-                     dest="nPorts",
+                    dest="nPorts",
                     type=int,
                     action="store",
                     help="Number of ports per switch",
                     default=4)
+
+parser.add_argument('-dir',
+                    dest="dir",
+                    action="store",
+                    help="Directory to store outputs",
+                    required=True)
 
 args = parser.parse_args()
 
@@ -90,6 +96,23 @@ def parse_route(route, link_counts):
 def parse_routes(routes, link_counts):
     for route in routes:
         parse_route(route, link_counts)
+
+def sort_counts(link_counts):
+    counts = {}
+    for link in link_counts:
+        if link_counts[link] in counts:
+            counts[link_counts[link]] += 1
+        else:
+            counts[link_counts[link]] = 1
+    return counts
+
+def write_counts(counts, filename):
+    if not os.path.exists(args.dir):
+        os.makedirs(args.dir)
+    f = open("%s/%s" % (args.dir, filename), 'w')
+    for num_paths in counts:
+        f.write("%s %s\n" % (str(num_paths), str(counts[num_paths])))
+    f.close()
 
 ROUTING = { 
     'ksp' : KSPRouting,
@@ -119,7 +142,7 @@ def experiment(tp="jf", routing="ksp"):
         p = Popen(pox_args, stdout=fnull, stderr=fnull)
     sleep(25)
 
-    print "Starting experiments for topo %s and routing %s" % (exp, routing)
+    print "Starting experiments for topo %s and routing %s" % (tp, routing)
     #net.pingAll()
 
     link_counts = {}
@@ -137,7 +160,9 @@ def experiment(tp="jf", routing="ksp"):
             route = routing_obj.get_route(src, dst, 0)
             parse_route(route, link_counts)
 
-    print link_counts
+    counts = sort_counts(link_counts)
+    #print link_counts
+    write_counts(counts, "%s-%s" % (tp, routing))
 
     print "Stopping Mininet"
     net.stop()
