@@ -30,6 +30,8 @@ import sys
 import os
 import math
 
+CUSTOM_IPERF_PATH = "~/iperf-patched/src/iperf"
+
 parser = ArgumentParser(description="Jellyfish Tests")
 
 parser.add_argument('-t',
@@ -70,6 +72,11 @@ parser.add_argument('-dir',
                     action="store",
                     help="Directory to store outputs",
                     required=True)
+
+parser.add_argument('--cong',
+                    dest="cong",
+                    help="Congestion control algorithm to use",
+                    default="bic")
 
 args = parser.parse_args()
 
@@ -119,6 +126,65 @@ ROUTING = {
     'ecmp' : ECMPRouting
 }
 
+def links_experiment():
+    pass
+
+def start_receiver(net, receiver):
+    r = net.getNodeByName(receiver)
+    r.popen("%s -s -p %s > %s/iperf_server.txt" %
+             (CUSTOM_IPERF_PATH, 5001, args.dir), shell=True)
+
+def start_sender(net, sender, receiver):
+    seconds = 30
+
+    s = net.getNodeByName(sender)
+    r = net.getNodeByName(receiver)
+    
+    s.popen("%s -c %s -p %s -t %d -i 1 -yc -Z %s > %s/iperf_client%d-%d.txt" % (CUSTOM_IPERF_PATH, r.IP(), 5001, seconds, args.cong, args.dir, sender, receiver), shell=True)
+
+def throughput_experiment(net, topo, flows):
+
+#    monitor = Process(target=monitor_devs_ng, args=('%s/bwm.txt' % outputfolder, 1.0))
+#    monitor.start()
+
+    hosts = topo.hosts():
+    for host in hosts:
+        start_receiver(net, host)
+
+    start = time()
+
+    receivers = hosts[:]
+    for i in range(flows):
+        # find sender - receiver pairs
+        match = False
+        while not match:
+            shuffle(receivers)
+            
+            for i in range(len(hosts)):
+                if hosts[i] == receivers[i]:
+                    continue
+            
+            match = True
+
+        for i in range(len(hosts)):
+            start_sender(net, hosts[i], receivers[i])
+    
+            
+    for host in hosts:
+        stop_iperf(net, host)
+
+    sleep(40)
+
+    end = time()
+    print "Experiment took %.3f seconds to complete" % (end - start)
+
+#    monitor.terminate()
+#    os.system("killall -9 bwm-ng")
+    
+    os.system('killall -9 iperf' )
+
+    print "Finished throughput experiment"
+
 def experiment(tp="jf", routing="ksp"):
     if tp == "jf":
         topo = JellyfishTopo(nServers=args.nServers,nSwitches=args.nSwitches,nPorts=args.nPorts)
@@ -163,6 +229,8 @@ def experiment(tp="jf", routing="ksp"):
     counts = sort_counts(link_counts)
     #print link_counts
     write_counts(counts, "%s-%s" % (tp, routing))
+
+#    throughput_experiment(net, topo, 1)
 
     print "Stopping Mininet"
     net.stop()

@@ -8,12 +8,13 @@ import matplotlib.pyplot as plt
 
 from argparse import ArgumentParser
 
+import glob
 import string
 
 parser = ArgumentParser(description="Jellyfish Plots")
-parser.add_argument('-i',
-                    help="Input file for the plot.",
-                    dest="in",
+parser.add_argument('-dir',
+                    help="Directory containing inputs for the plot.",
+                    dest="dir",
                     default=None)
 
 parser.add_argument('-o',
@@ -43,8 +44,14 @@ plt.plot(keys, values, lw=2, label="8 shortest paths", color="blue", drawstyle="
 plt.plot(keys, values, lw=1, label="64 way ecmp", color="green", drawstyle="steps-pre")
 plt.plot(keys, values, lw=1, label="8 way ecmp", color="red", drawstyle="steps-pre")
 '''
-plotData('results/jf-ecmp', 'ECMP', 'red')
-plotData('results/jf-ksp', 'KSP', 'blue')
+
+for f in glob.glob("%s/*.txt" % args.dir):
+    label = f[len(args.dir) + 1:-len('.txt')]
+    color = 'red' if 'ecmp' in label else 'blue'
+    plotData(f, label, color)
+    
+#plotData('results/jf-ecmp', 'ECMP', 'red')
+#plotData('results/jf-ksp', 'KSP', 'blue')
 
 #plt.xlim((start,end))
 #plt.ylim((start,end))
