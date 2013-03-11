@@ -21,7 +21,7 @@ from subprocess import Popen, PIPE
 from time import sleep, time
 from multiprocessing import Process
 from argparse import ArgumentParser
-from random import randrange
+from random import randrange, seed, random
 
 #from monitor import monitor_qlen
 import termcolor as T
@@ -78,6 +78,13 @@ parser.add_argument('--cong',
                     help="Congestion control algorithm to use",
                     default="bic")
 
+parser.add_argument('-p',
+                    dest='p',
+                    type=float,
+                    action='store',
+                    help='Probability that a host pair is included in the route computation',
+                    default=1.0)
+
 args = parser.parse_args()
 
 def increment_link_count(link, link_counts):
@@ -104,9 +111,14 @@ def parse_routes(routes, link_counts):
     for route in routes:
         parse_route(route, link_counts)
 
+def containsHost(link):
+    return link[0][0] == 'h' or link[1][0] == 'h'
+
 def sort_counts(link_counts):
     counts = {}
     for link in link_counts:
+        if containsHost(link):
+            continue
         if link_counts[link] in counts:
             counts[link_counts[link]] += 1
         else:
@@ -211,6 +223,7 @@ def experiment(tp="jf", routing="ksp"):
     print "Starting experiments for topo %s and routing %s" % (tp, routing)
     #net.pingAll()
 
+    seed(0)
     link_counts = {}
     routing_obj = ROUTING[routing](topo)
     for i in range(1, args.nServers + 1):
@@ -219,12 +232,14 @@ def experiment(tp="jf", routing="ksp"):
             if i == j:
                 # skip if same node
                 continue
-            dst = 'h%d' % j
-            #routes = routing_obj.get_routes(src, dst)
-            # routes don't include the src and dst hosts, so pass those to parse
-            #parse_routes(routes, link_counts)
-            route = routing_obj.get_route(src, dst, 0)
-            parse_route(route, link_counts)
+            r = random()
+            if r < args.p:
+                dst = 'h%d' % j
+                #routes = routing_obj.get_routes(src, dst)
+                # routes don't include the src and dst hosts, so pass those to parse
+                #parse_routes(routes, link_counts)
+                route = routing_obj.get_route(src, dst, 0)
+                parse_route(route, link_counts)
 
     counts = sort_counts(link_counts)
     #print link_counts
