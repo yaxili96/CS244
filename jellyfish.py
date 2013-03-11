@@ -111,13 +111,13 @@ def parse_routes(routes, link_counts):
     for route in routes:
         parse_route(route, link_counts)
 
-def containsHost(link):
-    return link[0][0] == 'h' or link[1][0] == 'h'
+def containsHost(link, hosts):
+    return (link[0][0] in hosts) or (link[1][0] in hosts)
 
-def sort_counts(link_counts):
+def sort_counts(link_counts, hosts):
     counts = {}
     for link in link_counts:
-        if containsHost(link):
+        if containsHost(link, hosts):
             continue
         if link_counts[link] in counts:
             counts[link_counts[link]] += 1
@@ -129,7 +129,7 @@ def write_counts(counts, filename):
     if not os.path.exists(args.dir):
         os.makedirs(args.dir)
     f = open("%s/%s" % (args.dir, filename), 'w')
-    for num_paths in counts:
+    for num_paths in sorted(counts.iterkeys()):
         f.write("%s %s\n" % (str(num_paths), str(counts[num_paths])))
     f.close()
 
@@ -138,8 +138,27 @@ ROUTING = {
     'ecmp' : ECMPRouting
 }
 
-def links_experiment():
-    pass
+def links_experiment(topo, tp, routing):
+    seed(0)
+    link_counts = {}
+    routing_obj = ROUTING[routing](topo)
+    hosts = topo.hosts()
+    for src in hosts:
+        for dst in hosts:
+            if src == dst:
+                # skip if same node
+                continue
+            r = random()
+            if r < args.p:
+                #routes = routing_obj.get_routes(src, dst)
+                # routes don't include the src and dst hosts, so pass those to parse
+                #parse_routes(routes, link_counts)
+                route = routing_obj.get_route(src, dst, 0)
+                parse_route(route, link_counts)
+
+    counts = sort_counts(link_counts, hosts)
+    #print link_counts
+    write_counts(counts, "%s-%s-%s.txt" % (tp, routing, str(args.p)))
 
 def start_receiver(net, receiver):
     r = net.getNodeByName(receiver)
@@ -159,7 +178,7 @@ def throughput_experiment(net, topo, flows):
 #    monitor = Process(target=monitor_devs_ng, args=('%s/bwm.txt' % outputfolder, 1.0))
 #    monitor.start()
 
-    hosts = topo.hosts():
+    hosts = topo.hosts()
     for host in hosts:
         start_receiver(net, host)
 
@@ -223,28 +242,7 @@ def experiment(tp="jf", routing="ksp"):
     print "Starting experiments for topo %s and routing %s" % (tp, routing)
     #net.pingAll()
 
-    seed(0)
-    link_counts = {}
-    routing_obj = ROUTING[routing](topo)
-    for i in range(1, args.nServers + 1):
-        src = 'h%d' % i
-        for j in range(1, args.nServers + 1):
-            if i == j:
-                # skip if same node
-                continue
-            r = random()
-            if r < args.p:
-                dst = 'h%d' % j
-                #routes = routing_obj.get_routes(src, dst)
-                # routes don't include the src and dst hosts, so pass those to parse
-                #parse_routes(routes, link_counts)
-                route = routing_obj.get_route(src, dst, 0)
-                parse_route(route, link_counts)
-
-    counts = sort_counts(link_counts)
-    #print link_counts
-    write_counts(counts, "%s-%s" % (tp, routing))
-
+    links_experiment(topo, tp, routing)
 #    throughput_experiment(net, topo, 1)
 
     print "Stopping Mininet"
