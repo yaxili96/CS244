@@ -30,7 +30,7 @@ import sys
 import os
 import math
 
-CUSTOM_IPERF_PATH = "~/iperf-patched/src/iperf"
+CUSTOM_IPERF_PATH = "iperf-patched/src/iperf"
 
 parser = ArgumentParser(description="Jellyfish Tests")
 
