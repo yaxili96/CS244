@@ -97,9 +97,14 @@ def parse_routes(routes, link_counts):
     for route in routes:
         parse_route(route, link_counts)
 
+def containsHost(link):
+    return link[0][0] == 'h' or link[1][0] == 'h'
+
 def sort_counts(link_counts):
     counts = {}
     for link in link_counts:
+        if containsHost(link):
+            continue
         if link_counts[link] in counts:
             counts[link_counts[link]] += 1
         else:
