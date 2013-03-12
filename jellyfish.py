@@ -21,7 +21,7 @@ from subprocess import Popen, PIPE
 from time import sleep, time
 from multiprocessing import Process
 from argparse import ArgumentParser
-from random import randrange, seed, random
+from random import randrange, seed, random, shuffle
 
 #from monitor import monitor_qlen
 import termcolor as T
@@ -162,8 +162,9 @@ def links_experiment(topo, tp, routing):
 
 def start_receiver(net, receiver):
     r = net.getNodeByName(receiver)
-    r.popen("%s -s -p %s > %s/iperf_server.txt" %
-             (CUSTOM_IPERF_PATH, 5001, args.dir), shell=True)
+    print "Starting server at %s" % receiver
+    r.popen("%s -s -p %s > %s/iperf_server%s.txt" %
+             (CUSTOM_IPERF_PATH, 5001, args.dir, receiver[1:]), shell=True)
 
 def start_sender(net, sender, receiver):
     seconds = 30
@@ -171,7 +172,13 @@ def start_sender(net, sender, receiver):
     s = net.getNodeByName(sender)
     r = net.getNodeByName(receiver)
     
-    s.popen("%s -c %s -p %s -t %d -i 1 -yc -Z %s > %s/iperf_client%d-%d.txt" % (CUSTOM_IPERF_PATH, r.IP(), 5001, seconds, args.cong, args.dir, sender, receiver), shell=True)
+    print "Starting connection between %s and %s" % (sender, receiver)
+    s.popen("%s -c %s -p %s -t %d -i 1 -Z %s > %s/iperf_client%d-%d.txt" % (CUSTOM_IPERF_PATH, r.IP(), 5001, seconds, args.cong, args.dir, int(sender[1:]), int(receiver[1:])), shell=True)
+
+def stop_iperf(net, host):
+    h = net.getNodeByName(host)
+
+    
 
 def throughput_experiment(net, topo, flows):
 
@@ -190,19 +197,19 @@ def throughput_experiment(net, topo, flows):
         match = False
         while not match:
             shuffle(receivers)
-            
+     
+            match = True
             for i in range(len(hosts)):
                 if hosts[i] == receivers[i]:
-                    continue
-            
-            match = True
+                    match = False
+                    break
 
         for i in range(len(hosts)):
             start_sender(net, hosts[i], receivers[i])
     
             
-    for host in hosts:
-        stop_iperf(net, host)
+    #for host in hosts:
+    #    stop_iperf(net, host)
 
     sleep(40)
 
@@ -233,11 +240,11 @@ def experiment(tp="jf", routing="ksp"):
         pox_args = shlex.split("pox/pox.py riplpox.riplpox --topo=%s,%s,%s,%s --routing=%s --mode=reactive" % (tp, args.nServers, args.nSwitches, args.nPorts, routing))
     elif tp == "ft":
         pox_args = shlex.split("pox/pox.py riplpox.riplpox --topo=%s,%s --routing=%s --mode=reactive" % (tp, args.nPorts, routing))
-                
+      
     print "Starting RiplPox"
     with open(os.devnull, "w") as fnull:
         p = Popen(pox_args, stdout=fnull, stderr=fnull)
-    sleep(25)
+    sleep(15)
 
     print "Starting experiments for topo %s and routing %s" % (tp, routing)
     #net.pingAll()
