@@ -25,9 +25,12 @@ parser.add_argument('-o',
 args = parser.parse_args()
 
 def calculateThroughput(filename):
+    print filename
     f = open(filename)
     lines = f.readlines()
 
+    if len(lines) == 0:
+        return -1
     # get last line summary
     summary = lines[-1]
     tp = string.split(summary, ',')[-1]
@@ -37,7 +40,9 @@ def calculateThroughput(filename):
 def compileData(topo, routing):
     throughputs = []
     for f in glob.glob("%s_%s_%s_*/iperf_client*.txt" % (args.dir, topo, routing)):
-        throughputs.append(calculateThroughput(f))
+        tp = calculateThroughput(f)
+        if tp != -1:
+            throughputs.append(calculateThroughput(f))
 
     return numpy.array(throughputs).mean()
 

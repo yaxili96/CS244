@@ -177,14 +177,14 @@ def start_receiver(net, receiver):
     r.popen("%s -s -p %s > %s/iperf_server%s.txt" %
              (CUSTOM_IPERF_PATH, 5001, args.dir, receiver), shell=True)
 
-def start_sender(net, sender, receiver):
+def start_sender(net, sender, receiver, flow):
     seconds = 30
 
     s = net.getNodeByName(sender)
     r = net.getNodeByName(receiver)
     
     print "Starting connection between %s and %s" % (sender, receiver)
-    s.popen("%s -c %s -p %s -t %d -i 1 -yc -Z %s > %s/iperf_client%s-%s.txt" % (CUSTOM_IPERF_PATH, r.IP(), 5001, seconds, args.cong, args.dir, sender, receiver), shell=True)
+    s.popen("%s -c %s -p %s -t %d -i 1 -yc -Z %s > %s/iperf_client%s-%s-%s.txt" % (CUSTOM_IPERF_PATH, r.IP(), 5001, seconds, args.cong, args.dir, sender, receiver, str(flow)), shell=True)
 
 def stop_iperf(net, host):
     h = net.getNodeByName(host)
@@ -222,7 +222,7 @@ def throughput_experiment(net, topo, flows):
             
     for i in range(len(hosts)):
         for j in range(flows):
-            start_sender(net, hosts[i], receivers[i])
+            start_sender(net, hosts[i], receivers[i], j)
     
     succeeded = 0
     wait_time = 300
@@ -283,7 +283,7 @@ def experiment(tp="jf", routing="ksp", exp="l"):
     if exp == 'l':
         links_experiment(topo, tp, routing)
     elif exp == 't':
-        throughput_experiment(net, topo, 1)
+        throughput_experiment(net, topo, args.flows)
 
     print "Stopping Mininet"
     net.stop()
