@@ -46,6 +46,12 @@ parser.add_argument('-r',
                     help="Routing algorithm",
                     default="ksp")
 
+parser.add_argument('-e'
+                    dest="exp",
+                    action="store",
+                    help="Experiment",
+                    default="l")
+
 parser.add_argument('-nse',
                     dest="nServers",
                     type=int,
@@ -240,7 +246,7 @@ def throughput_experiment(net, topo, flows):
 
     print "Finished throughput experiment"
 
-def experiment(tp="jf", routing="ksp"):
+def experiment(tp="jf", routing="ksp", exp="l"):
     if tp == "jf":
         topo = JellyfishTopo(nServers=args.nServers,nSwitches=args.nSwitches,nPorts=args.nPorts)
     elif tp == "ft":
@@ -266,8 +272,10 @@ def experiment(tp="jf", routing="ksp"):
     print "Starting experiments for topo %s and routing %s" % (tp, routing)
     #net.pingAll()
 
-    links_experiment(topo, tp, routing)
-    throughput_experiment(net, topo, 1)
+    if exp='l':
+        links_experiment(topo, tp, routing)
+    elif exp='t':
+        throughput_experiment(net, topo, 1)
 
     print "Stopping Mininet"
     net.stop()
@@ -280,4 +288,4 @@ def experiment(tp="jf", routing="ksp"):
     Popen("pgrep -f webserver.py | xargs kill -9", shell=True).wait()
 
 if __name__ == "__main__":
-    experiment(tp=args.topo, routing=args.routing)
+    experiment(tp=args.topo, routing=args.routing, exp=args.exp)
