@@ -7,6 +7,10 @@ from argparse import ArgumentParser
 import glob
 import string
 
+import numpy
+
+BITS_TO_MBITS = 1.0/1000000
+
 parser = ArgumentParser(description="Jellyfish Plots")
 parser.add_argument('-dir',
                     help="Directory containing inputs for the throughput.",
@@ -26,7 +30,7 @@ def calculateThroughput(filename):
 
     # get last line summary
     summary = lines[-1]
-    tp = string.split(summary, ',')
+    tp = string.split(summary, ',')[-1]
     return tp
 
 def compileData(topo, routing):
@@ -34,24 +38,24 @@ def compileData(topo, routing):
     for f in glob.glob("%s_%s_%s_*/iperf_client*.txt"):
         throughputs.append(calculateThroughput(f))
 
-    return throughputs
+    return numpy.mean(throughputs)
 
-jf-ksp = compile_data('jf', 'ksp')
-jf-ecmp = compile_data('jf', 'ecmp')
-#ft-ksp = compile_data('ft', 'ksp')
-ft-ecmp = compile_data('ft', 'ecmp')
+jf-ksp = compile_data('jf', 'ksp') * BITS_TO_MBITS
+jf-ecmp = compile_data('jf', 'ecmp') * BITS_TO_MBITS
+#ft-ksp = compile_data('ft', 'ksp') * BITS_TO_MBITS
+ft-ecmp = compile_data('ft', 'ecmp') * BITS_TO_MBITS
 
 if args.out:
     print "Saving output to %s" % args.out
     # save to output file
     f = open(args.out, 'w')
-    f.write("Jellyfish K-Shortest Paths: %s" % jf-ksp)
-    f.write("Jellyfish ECMP: %s" % jf-ecmp)
-    f.write("FatTree ECMP: %s" % ft-ecmp)
+    f.write("Jellyfish K-Shortest Paths: %sMb/s" % jf-ksp)
+    f.write("Jellyfish ECMP: %sMb/s" % jf-ecmp)
+    f.write("FatTree ECMP: %sMb/s" % ft-ecmp)
     f.close()
 else:
-    print "Jellyfish K-Shortest Paths: %s" % jf-ksp
-    print "Jellyfish ECMP: %s" % jf-ecmp
-#    print "FatTree K-Shortest Paths: %s" % ft-ksp
-    print "FatTree ECMP: %s" % ft-ecmp
+    print "Jellyfish K-Shortest Paths: %sMb/s" % jf-ksp
+    print "Jellyfish ECMP: %sMb/s" % jf-ecmp
+#    print "FatTree K-Shortest Paths: %sMb/s" % ft-ksp
+    print "FatTree ECMP: %sMb/s" % ft-ecmp
     
