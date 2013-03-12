@@ -1,0 +1,55 @@
+CS244 '13: Jellyfish Path Diversity and Throughput Comparison
+
+Bryan Cheng - bbch
+Calvin Tuong - ctuong
+
+Introduction
+
+Singla et. al. present Jellyfish, a data center topology that has a large amount of randomness built into it. In the paper, it is specifically compared to a fat-tree topology. The authors' goal is to show that Jellyfish can support more servers than a fat-tree with the same capacity and equipment, and also that it is much more flexible, allowing the network to be easily expanded. The flexibility comes as a result of the fact that Jellyfish is random - there isn't any structure that needs to be maintained when extending the network (i.e. adding more servers or switches). Additionally, Jellyfish is expected to have high bandwidth. This comes from the fact that in a random graph, the average path length between servers is shorter than in a fat-tree, and smaller path lengths leads to higher throughput.
+
+As we've seen in class, data center optimization is only getting more and more important with the growth of companies like Google, Facebook, etc., which pour an enormous amount of money into their data centers. We have seen examples of optimizations in the transport protocol, such as DCTCP. We have also seen VL2, which is an optimization on data center topologies. The authors of the Jellyfish paper specifically note that organizations and companies have trouble expanding their existing data centers, and this is a motivating factor behind their design.
+
+The Algorithm
+
+The algorithm to create a Jellyfish topology is extremely simple. Given a set of hosts and switches, connect each host to a distinct switch. The connections between switches are determined by randomly choosing two switches that aren't already directly connected and have free ports and then connecting them. This is done until no more links can be added. At the end, assuming we have enough switches and ports to connect the graph, there may be switches that have one or more free ports. If a switch s has more than one free port, we can randomly choose an existing link (s_1, s_2), remove it, and replace it by two links (s, s_1) and (s, s_2). This removes two free ports from s, and the process can be repeated until s has at most one free port. (This process is known as incremental expansion.) This creates a topology in which the switches are completely randomly connected. Adding new nodes to this topology can be done easily by following a process similar to incremental expansion.
+
+Given this algorithm, it is easy to see why Jellyfish is much more flexible than a fat-tree. Additionally, because of the randomness, path lengths will tend to be shorter because in a fat-tree, flows have to go up and down the tree if they need to fully cross the tree. These characteristics suggest that Jellyfish is a topology that could have some performance improvements over a fat-tree. Because the topology is random, it is important to test different performance metrics to make sure that on average, there actually is an improvement over a fat-tree.
+
+Results from the Paper
+
+Overall, the authors found that Jellyfish performed just as well as or better than a traditional fat-tree topology in all of their different metrics. These metrics include average path length, average throughput, fairness, and number of servers supported, among other things. At the same time, Jellyfish provides much more ease of expansion, which, the authors argue, makes it a viable choice of topology in real data centers.
+
+Our Goal
+
+Our goal in this project is to replicate the results of figure 9 and part of table 1 from the paper. Figure 9 shows path diversity provided by ECMP routing and k-shortest-paths routing in a Jellyfish topology. Specifically, it shows that with k-shortest-paths, links are generally part of many more distinct paths than with ECMP. This is an important result because higher path diversity results in better ability to utilize the capacity of the network as much as possible and to avoid congestion. The figure shows that k-shortest-paths is a much better routing algorithm to use on Jellyfish than ECMP (they also confirm this by running packet simulation tests on Jellyfish using both k-shortest-paths and ECMP). This result allows the authors to conduct their other experiments with k-shortest-paths instead of ECMP on Jellyfish.
+
+Table 1 shows the results of running some packet simulations on fat-tree and Jellyfish. For this project, we look specifically at the case when TCP is used as the transport protocol and not at MPTCP. (Aside: while the MPTCP case might be more relevant because the average throughput is higher (and thus MPTCP is what would probably be used in practice), our replication of table 1 came in addition to our initial replication of figure 9, so we did not have time to explore and configure MPTCP.) The table reveals that using k-shortest-paths on top of TCP with Jellyfish gives us the same average throughput as running ECMP on fat-tree. This is one step forward in showing that Jellyfish achieves about the same performance as fat-tree.
+
+Results (+ Critique)
+
+Challenges
+
+We ran into several major challenges in our replication of these results. The first is that the paper is generally unclear about the exact parameters that they used to run their experiments and generate their results. For example, for figure 9, the authors state that they used "random permutation traffic at the server-level," but they do not mention how many node pairs were included in these random permutations or their exactly methodology in deciding how to generate this traffic. To resolve this, we run several experiments by varying a parameter p, which represents the chance that a node pair will have traffic routed between them. By using p = 0.5, 0.75, and 1, we obtain results for when roughly half and three-fourths of the node pairs have traffic between them, and also for when we enumerate all possible node pairs. 
+
+Another instance of this is in the specification of topology size used in their experiments. While they state that they used a Jellyfish topology with 686 or 780 servers, the number of switches and the number of ports per switch does not seem to be specified. The other (related) challenge is that we could not possibly run Mininet with that many servers anyway. Thus we had to scale down our topologies by running with ___________________________________________ (FILL THIS IN). Because of these factors, we had to make these assumptions, but given our restricted setup, we believe that we replicated the results to the best of our ability.
+
+Platform
+
+We chose to use Mininet and RipLPOX. RipLPOX was a clear choice because it was designed specifically for running experiments on data center topologies and fat-tree and ECMP were already built into the code. Additionally, RipLPOX runs relatively easily with Mininet. After the first two assignments, we also found Mininet to be easy to use, and it fit well with our need to run TCP simulations over our topology.
+
+README (instructions)
+
+Feedback on mininet/pox/etc. (optional)
+
+
+
+
+--- From Intermediate Report ---
+
+Status of the Project
+
+Manu provided links to code for RipL/RipLPOX/POX, which had code for a fat-tree topology and the ability to run custom routing algorithms on a data center topology. To verify that everything worked correctly out of the box, we ran ECMP on a fat-tree topology and tested reachability for all the hosts via pingall. Then, based on the existing code for the fat-tree, we wrote code to generate a random Jellyfish topology. The algorithm for this is described above. We have also written code to implement k-shortest-paths. The algorithm simply uses BFS to find paths from the source to the destination and stops when there are no more nodes to explore or when k paths have been found. The algorithm then randomly returns one of the shortest paths found. This was tested with the fat-tree topology and seems to work.
+
+Next Steps
+
+The given implementation for ECMP is designed to run on the fat-tree - the topology extends a StructuredTopology class, and the routing algorithm assumes that the topology is a subclass of this class. Thus we have to rewrite ECMP to match Jellyfish because Jellyfish is not structured (and thus does not extend StructuredTopology). After that, we will have written all the code necessary to set up the experiment. We will have to find a way to measure the path diversity of a topology with these routing algorithms. This will be a challenge for us - we aren't sure how exactly to determine how many paths a given link is a part of. Next, we will have to run the experiment several times on different topologies to make sure that the results hold. One issue is that in the paper, the experiment was run with 686 servers (and the number of switches does not seem to be clearly stated). This will likely be impossible on a single EC2 instance - generating a topology with 16 servers, 20 switches, and 4 ports per switch is already quite demanding on a micro/medium instance, so it does not seem likely that we will be able to extend this to the size of the experiment run in the paper, even with an xlarge instance. Thus we will have to see exactly how big we can make the topology without crushing the instance and see whether or not k-shortest-paths still provides much better path diversity than ECMP even on a smaller topology. 
