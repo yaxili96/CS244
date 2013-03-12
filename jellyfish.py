@@ -13,7 +13,7 @@ from mininet.cli import CLI
 
 from ripl.ripl.dctopo import FatTreeTopo, JellyfishTopo
 
-from ripl.ripl.routing import KSPRouting, ECMPRouting
+from ripl.ripl.routing import KSPRouting, ECMPRouting, HashedStructuredRouting
 
 import shlex
 
@@ -147,8 +147,8 @@ def write_counts(counts, filename):
 
 ROUTING = { 
     'ksp' : KSPRouting,
-    'ecmp' : ECMPRouting
-    # TODO add hashed routing here
+    'ecmp' : ECMPRouting,
+    'hashed' : HashedStructuredRouting
 }
 
 def links_experiment(topo, tp, routing):
