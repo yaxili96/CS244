@@ -175,7 +175,7 @@ def start_receiver(net, receiver):
     r = net.getNodeByName(receiver)
     print "Starting server at %s" % receiver
     r.popen("%s -s -p %s > %s/iperf_server%s.txt" %
-             (CUSTOM_IPERF_PATH, 5001, args.dir, receiver[1:]), shell=True)
+             (CUSTOM_IPERF_PATH, 5001, args.dir, receiver), shell=True)
 
 def start_sender(net, sender, receiver):
     seconds = 30
