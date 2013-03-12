@@ -112,7 +112,7 @@ def parse_routes(routes, link_counts):
         parse_route(route, link_counts)
 
 def containsHost(link, hosts):
-    return (link[0][0] in hosts) or (link[1][0] in hosts)
+    return (link[0] in hosts) or (link[1] in hosts)
 
 def sort_counts(link_counts, hosts):
     counts = {}
@@ -136,6 +136,7 @@ def write_counts(counts, filename):
 ROUTING = { 
     'ksp' : KSPRouting,
     'ecmp' : ECMPRouting
+    # TODO add hashed routing here
 }
 
 def links_experiment(topo, tp, routing):
