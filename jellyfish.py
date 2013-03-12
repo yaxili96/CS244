@@ -46,7 +46,7 @@ parser.add_argument('-r',
                     help="Routing algorithm",
                     default="ksp")
 
-parser.add_argument('-e'
+parser.add_argument('-e',
                     dest="exp",
                     action="store",
                     help="Experiment",
@@ -95,7 +95,7 @@ parser.add_argument('-f',
                     dest='flows',
                     type=int,
                     action='store',
-                    help='Number of flows for TCP throughput test'
+                    help='Number of flows for TCP throughput test')
 
 args = parser.parse_args()
 
@@ -138,8 +138,6 @@ def sort_counts(link_counts, hosts):
     return counts
 
 def write_counts(counts, filename):
-    if not os.path.exists(args.dir):
-        os.makedirs(args.dir)
     f = open("%s/%s" % (args.dir, filename), 'w')
     for num_paths in sorted(counts.iterkeys()):
         f.write("%s %s\n" % (str(num_paths), str(counts[num_paths])))
@@ -186,7 +184,7 @@ def start_sender(net, sender, receiver):
     r = net.getNodeByName(receiver)
     
     print "Starting connection between %s and %s" % (sender, receiver)
-    s.popen("%s -c %s -p %s -t %d -i 1 -yc -Z %s > %s/iperf_client%d-%d.txt" % (CUSTOM_IPERF_PATH, r.IP(), 5001, seconds, args.cong, args.dir, int(sender[1:]), int(receiver[1:])), shell=True)
+    s.popen("%s -c %s -p %s -t %d -i 1 -yc -Z %s > %s/iperf_client%s-%s.txt" % (CUSTOM_IPERF_PATH, r.IP(), 5001, seconds, args.cong, args.dir, sender, receiver), shell=True)
 
 def stop_iperf(net, host):
     h = net.getNodeByName(host)
@@ -253,6 +251,10 @@ def throughput_experiment(net, topo, flows):
     print "Finished throughput experiment"
 
 def experiment(tp="jf", routing="ksp", exp="l"):
+    # create the result directory
+    if not os.path.exists(args.dir):
+        os.makedirs(args.dir)
+
     if tp == "jf":
         topo = JellyfishTopo(nServers=args.nServers,nSwitches=args.nSwitches,nPorts=args.nPorts)
     elif tp == "ft":
@@ -278,9 +280,9 @@ def experiment(tp="jf", routing="ksp", exp="l"):
     print "Starting experiments for topo %s and routing %s" % (tp, routing)
     #net.pingAll()
 
-    if exp='l':
+    if exp == 'l':
         links_experiment(topo, tp, routing)
-    elif exp='t':
+    elif exp == 't':
         throughput_experiment(net, topo, 1)
 
     print "Stopping Mininet"
