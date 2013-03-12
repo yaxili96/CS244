@@ -25,33 +25,32 @@ Our goal in this project is to replicate the results of figure 9 and part of tab
 
 Table 1 shows the results of running some packet simulations on fat-tree and Jellyfish. For this project, we look specifically at the case when TCP is used as the transport protocol and not at MPTCP. (Aside: while the MPTCP case might be more relevant because the average throughput is higher (and thus MPTCP is what would probably be used in practice), our replication of table 1 came in addition to our initial replication of figure 9, so we did not have time to explore and configure MPTCP.) The table reveals that using k-shortest-paths on top of TCP with Jellyfish gives us the same average throughput as running ECMP on fat-tree. This is one step forward in showing that Jellyfish achieves about the same performance as fat-tree.
 
-Results (+ Critique)
+Results
+
+Path Diversity
+We replicate figure 9 by running an analysis on a Jellyfish topology with 16 servers, 20 switches, and 4 ports per switch. We also have a parameter p which decides approximately what percentage of all node pairs we should be routing between. Based on p, we randomly decide which pairs of servers should have traffic routed between them. Then, we compute paths between these pairs based on the routing algorithm that we are analyzing (either k-shortest-paths, with k = 8, or ECMP). We look at the links on each path and count the number of paths that a given link appears on. Finally, we sort this list of links in order of path diversity (i.e. in order of increasing number of paths that the link appears on).
+
+Each of the graphs that we generated shows that k-shortest-paths offers greater path diversity than ECMP when used with Jellyfish. These results agrees with the results presented in the paper. However, in the paper, k-shortest-paths shows a clear advantage over ECMP while in our results, it only seems to be slightly better. We believe that this is because our topology is significantly smaller (the reason for this is discussed in the Challenges section). Because there are fewer paths overall in a smaller topology, we should expect the differences between the two routing algorithms to be smaller.
+
+*** THROUGHPUT EXPERIMENT SET UP + RESULTS HERE ***
+Throughput Comparison
 
 Challenges
 
 We ran into several major challenges in our replication of these results. The first is that the paper is generally unclear about the exact parameters that they used to run their experiments and generate their results. For example, for figure 9, the authors state that they used "random permutation traffic at the server-level," but they do not mention how many node pairs were included in these random permutations or their exactly methodology in deciding how to generate this traffic. To resolve this, we run several experiments by varying a parameter p, which represents the chance that a node pair will have traffic routed between them. By using p = 0.5, 0.75, and 1, we obtain results for when roughly half and three-fourths of the node pairs have traffic between them, and also for when we enumerate all possible node pairs. 
 
-Another instance of this is in the specification of topology size used in their experiments. While they state that they used a Jellyfish topology with 686 or 780 servers, the number of switches and the number of ports per switch does not seem to be specified. The other (related) challenge is that we could not possibly run Mininet with that many servers anyway. Thus we had to scale down our topologies by running with ___________________________________________ (FILL THIS IN). Because of these factors, we had to make these assumptions, but given our restricted setup, we believe that we replicated the results to the best of our ability.
+Another instance of this is in the specification of topology size used in their experiments. While they state that they used a Jellyfish topology with 686 or 780 servers, the number of switches and the number of ports per switch does not seem to be specified. The other (related) challenge is that we could not possibly run Mininet with that many servers anyway. Thus we had to scale down our topologies by running with 16 servers, 20 switches, and 4 ports per switch for Jellyfish. For fat-tree, we had to use k = 4 (though the size of the fat-tree is never actually specified in the paper anyway). Because of these factors, we had to make these assumptions, but given our restricted setup, we believe that we replicated the results to the best of our ability.
 
 Platform
 
-We chose to use Mininet and RipLPOX. RipLPOX was a clear choice because it was designed specifically for running experiments on data center topologies and fat-tree and ECMP were already built into the code. Additionally, RipLPOX runs relatively easily with Mininet. After the first two assignments, we also found Mininet to be easy to use, and it fit well with our need to run TCP simulations over our topology.
+We chose to use Mininet and RipL-POX. RipL-POX was a clear choice because it was designed specifically for running experiments on data center topologies and fat-tree and ECMP were already built into the code. Additionally, RipL-POX runs together with Mininet, so we chose to use Mininet. After the first two assignments, we also found Mininet to be easy to use, and it fit well with our need to run TCP simulations over our topology.
 
-README (instructions)
+Instructions for Setting Up and Running the Experiments
 
-Feedback on mininet/pox/etc. (optional)
+*** FINISH THIS ***
 
-We found the software useful to perform these simulations. It's quite annoying though that all these software packages were disjoint. Thus, we woudl have to start mininet, then start pox, and then be able to run out tests. If it were possible to bake all these packages into one standalone package, and make it easier to launch the entire set at once, that would make it easier to get started.
+Feedback on Mininet and RipL-POX
 
-For mininet, we also would like more documentation. It should let us know what each of the parameters for the functions mean and also the default values for various parameters.
+We found the software useful to perform these simulations. It was quite annoying though that all these software packages were disjoint. Thus, we would have to start Mininet and then start POX to be able to run out tests. If it were possible to bake all these packages into one standalone package and make it easier to launch the entire set at once, that would make it easier to get started.
 
-
---- From Intermediate Report ---
-
-Status of the Project
-
-Manu provided links to code for RipL/RipLPOX/POX, which had code for a fat-tree topology and the ability to run custom routing algorithms on a data center topology. To verify that everything worked correctly out of the box, we ran ECMP on a fat-tree topology and tested reachability for all the hosts via pingall. Then, based on the existing code for the fat-tree, we wrote code to generate a random Jellyfish topology. The algorithm for this is described above. We have also written code to implement k-shortest-paths. The algorithm simply uses BFS to find paths from the source to the destination and stops when there are no more nodes to explore or when k paths have been found. The algorithm then randomly returns one of the shortest paths found. This was tested with the fat-tree topology and seems to work.
-
-Next Steps
-
-The given implementation for ECMP is designed to run on the fat-tree - the topology extends a StructuredTopology class, and the routing algorithm assumes that the topology is a subclass of this class. Thus we have to rewrite ECMP to match Jellyfish because Jellyfish is not structured (and thus does not extend StructuredTopology). After that, we will have written all the code necessary to set up the experiment. We will have to find a way to measure the path diversity of a topology with these routing algorithms. This will be a challenge for us - we aren't sure how exactly to determine how many paths a given link is a part of. Next, we will have to run the experiment several times on different topologies to make sure that the results hold. One issue is that in the paper, the experiment was run with 686 servers (and the number of switches does not seem to be clearly stated). This will likely be impossible on a single EC2 instance - generating a topology with 16 servers, 20 switches, and 4 ports per switch is already quite demanding on a micro/medium instance, so it does not seem likely that we will be able to extend this to the size of the experiment run in the paper, even with an xlarge instance. Thus we will have to see exactly how big we can make the topology without crushing the instance and see whether or not k-shortest-paths still provides much better path diversity than ECMP even on a smaller topology. 
+For Mininet, we also would like more documentation. It should let us know what each of the parameters for the functions mean and also the default values for various parameters.
