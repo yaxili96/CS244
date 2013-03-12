@@ -41,7 +41,9 @@ README (instructions)
 
 Feedback on mininet/pox/etc. (optional)
 
+We found the software useful to perform these simulations. It's quite annoying though that all these software packages were disjoint. Thus, we woudl have to start mininet, then start pox, and then be able to run out tests. If it were possible to bake all these packages into one standalone package, and make it easier to launch the entire set at once, that would make it easier to get started.
 
+For mininet, we also would like more documentation. It should let us know what each of the parameters for the functions mean and also the default values for various parameters.
 
 
 --- From Intermediate Report ---

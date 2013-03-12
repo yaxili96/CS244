@@ -51,7 +51,7 @@ plt.plot(keys, values, lw=1, label="8 way ecmp", color="red", drawstyle="steps-p
 '''
 
 for f in glob.glob("%s/*.txt" % args.dir):
-    if string(args.p) not in f:
+    if str(args.p) not in f:
         continue
     
     label = f[len(args.dir) + 1:-len('.txt')]

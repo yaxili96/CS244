@@ -167,7 +167,7 @@ def start_receiver(net, receiver):
              (CUSTOM_IPERF_PATH, 5001, args.dir, receiver[1:]), shell=True)
 
 def start_sender(net, sender, receiver):
-    seconds = 30
+    seconds = 300
 
     s = net.getNodeByName(sender)
     r = net.getNodeByName(receiver)
@@ -178,7 +178,12 @@ def start_sender(net, sender, receiver):
 def stop_iperf(net, host):
     h = net.getNodeByName(host)
 
-    
+def count_connections():
+    "Count current connections in iperf output file"
+    out = args.dir + "/iperf_server*"
+    lines = Popen("grep -R connected %s | wc -l" % out,
+                  shell=True, stdout=PIPE).communicate()[0]
+    return int(lines)
 
 def throughput_experiment(net, topo, flows):
 
@@ -192,34 +197,45 @@ def throughput_experiment(net, topo, flows):
     start = time()
 
     receivers = hosts[:]
-    for i in range(flows):
-        # find sender - receiver pairs
-        match = False
-        while not match:
-            shuffle(receivers)
-     
-            match = True
-            for i in range(len(hosts)):
-                if hosts[i] == receivers[i]:
-                    match = False
-                    break
 
+    # find sender - receiver pairs
+    match = False
+    while not match:
+        shuffle(receivers)
+
+        match = True
         for i in range(len(hosts)):
+            if hosts[i] == receivers[i]:
+                match = False
+                break
+            
+    for i in range(len(hosts)):
+        for j in range(flows):
             start_sender(net, hosts[i], receivers[i])
     
-            
+    succeeded = 0
+    wait_time = 300
+    while wait_time > 0 and succeeded != len(hosts) * flows:
+        wait_time -= 1
+        succeeded = count_connections()
+        print 'Connections %d/%d succeeded\r' % (succeeded, len(hosts) * flows),
+        sys.stdout.flush()
+        sleep(1)
+
     #for host in hosts:
     #    stop_iperf(net, host)
 
-    sleep(40)
+    sleep(30)
+
+    os.system('killall -9 ' + CUSTOM_IPERF_PATH)
 
     end = time()
-    print "Experiment took %.3f seconds to complete" % (end - start)
+    print "\nExperiment took %.3f seconds to complete" % (end - start)
 
 #    monitor.terminate()
 #    os.system("killall -9 bwm-ng")
     
-    os.system('killall -9 iperf' )
+#    os.system('killall -9 iperf' )
 
     print "Finished throughput experiment"
 
@@ -250,7 +266,7 @@ def experiment(tp="jf", routing="ksp"):
     #net.pingAll()
 
     links_experiment(topo, tp, routing)
-#    throughput_experiment(net, topo, 1)
+    throughput_experiment(net, topo, 1)
 
     print "Stopping Mininet"
     net.stop()
