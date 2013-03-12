@@ -174,13 +174,13 @@ def start_receiver(net, receiver):
              (CUSTOM_IPERF_PATH, 5001, args.dir, receiver[1:]), shell=True)
 
 def start_sender(net, sender, receiver):
-    seconds = 300
+    seconds = 30
 
     s = net.getNodeByName(sender)
     r = net.getNodeByName(receiver)
     
     print "Starting connection between %s and %s" % (sender, receiver)
-    s.popen("%s -c %s -p %s -t %d -i 1 -Z %s > %s/iperf_client%d-%d.txt" % (CUSTOM_IPERF_PATH, r.IP(), 5001, seconds, args.cong, args.dir, int(sender[1:]), int(receiver[1:])), shell=True)
+    s.popen("%s -c %s -p %s -t %d -i 1 -yc -Z %s > %s/iperf_client%d-%d.txt" % (CUSTOM_IPERF_PATH, r.IP(), 5001, seconds, args.cong, args.dir, int(sender[1:]), int(receiver[1:])), shell=True)
 
 def stop_iperf(net, host):
     h = net.getNodeByName(host)
@@ -232,7 +232,7 @@ def throughput_experiment(net, topo, flows):
     #for host in hosts:
     #    stop_iperf(net, host)
 
-    sleep(30)
+    sleep(40)
 
     os.system('killall -9 ' + CUSTOM_IPERF_PATH)
 
