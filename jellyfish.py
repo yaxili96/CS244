@@ -91,6 +91,12 @@ parser.add_argument('-p',
                     help='Probability that a host pair is included in the route computation',
                     default=1.0)
 
+parser.add_argument('-f',
+                    dest='flows',
+                    type=int,
+                    action='store',
+                    help='Number of flows for TCP throughput test'
+
 args = parser.parse_args()
 
 def increment_link_count(link, link_counts):

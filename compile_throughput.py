@@ -20,43 +20,38 @@ parser.add_argument('-o',
 
 args = parser.parse_args()
 
-def plotData(filename, label, color):
+def calculateThroughput(filename):
     f = open(filename)
     lines = f.readlines()
 
-    keys = []
-    values = []
-    cdf = 0
-    for line in lines:
-        datum = string.split(line.strip(), " ")
-        values.append(int(datum[0]))
-        cdf += int(datum[1])
-        keys.append(cdf)
+    # get last line summary
+    summary = lines[-1]
+    tp = string.split(summary, ',')
+    return tp
 
-    plt.plot(keys, values, lw=1, label=label, color=color, drawstyle="steps-pre")
+def compileData(topo, routing):
+    throughputs = []
+    for f in glob.glob("%s_%s_%s_*/iperf_client*.txt"):
+        throughputs.append(calculateThroughput(f))
 
-'''
-plt.plot(keys, values, lw=2, label="8 shortest paths", color="blue", drawstyle="steps-pre")
-plt.plot(keys, values, lw=1, label="64 way ecmp", color="green", drawstyle="steps-pre")
-plt.plot(keys, values, lw=1, label="8 way ecmp", color="red", drawstyle="steps-pre")
-'''
+    return throughputs
 
-for f in glob.glob("%s/*.txt" % args.dir):
-    if str(args.p) not in f:
-        continue
-    
-    label = f[len(args.dir) + 1:-len('.txt')]
-    color = 'red' if 'ecmp' in label else 'blue'
-    plotData(f, label, color)
-    
-#plt.xlim((start,end))
-#plt.ylim((start,end))
-plt.xlabel("Rank of Link")
-plt.ylabel("# Paths Link is on")
-plt.legend(loc=2)
+jf-ksp = compile_data('jf', 'ksp')
+jf-ecmp = compile_data('jf', 'ecmp')
+#ft-ksp = compile_data('ft', 'ksp')
+ft-ecmp = compile_data('ft', 'ecmp')
 
 if args.out:
     print "Saving output to %s" % args.out
-    plt.savefig(args.out)
+    # save to output file
+    f = open(args.out, 'w')
+    f.write("Jellyfish K-Shortest Paths: %s" % jf-ksp)
+    f.write("Jellyfish ECMP: %s" % jf-ecmp)
+    f.write("FatTree ECMP: %s" % ft-ecmp)
+    f.close()
 else:
-    plt.show()
+    print "Jellyfish K-Shortest Paths: %s" % jf-ksp
+    print "Jellyfish ECMP: %s" % jf-ecmp
+#    print "FatTree K-Shortest Paths: %s" % ft-ksp
+    print "FatTree ECMP: %s" % ft-ecmp
+    
