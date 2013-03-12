@@ -17,6 +17,11 @@ parser.add_argument('-dir',
                     dest="dir",
                     default=None)
 
+parser.add_argument('-p',
+                    type=float,
+                    help="Probability",
+                    default=1.0)
+
 parser.add_argument('-o',
                     help="Output png file for the plot.",
                     dest="out",
@@ -46,18 +51,18 @@ plt.plot(keys, values, lw=1, label="8 way ecmp", color="red", drawstyle="steps-p
 '''
 
 for f in glob.glob("%s/*.txt" % args.dir):
+    if string(args.p) not in f:
+        continue
+    
     label = f[len(args.dir) + 1:-len('.txt')]
     color = 'red' if 'ecmp' in label else 'blue'
     plotData(f, label, color)
     
-#plotData('results/jf-ecmp', 'ECMP', 'red')
-#plotData('results/jf-ksp', 'KSP', 'blue')
-
 #plt.xlim((start,end))
 #plt.ylim((start,end))
 plt.xlabel("Rank of Link")
 plt.ylabel("# Paths Link is on")
-plt.legend()
+plt.legend(loc=2)
 
 if args.out:
     print "Saving output to %s" % args.out
