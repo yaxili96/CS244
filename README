@@ -3,3 +3,16 @@ Calvin Tuong
 
 CS244 Programming Assignment 3
 Jellyfish
+
+Instructions
+1. Create a new instance in US West (Oregon)
+2. Choose the "CS244-Win13-Mininet" AMI
+3. Change the instance type to "c1.xlarge"
+4. Launch the instance
+5. ssh into your new instance
+6. Run "git clone https://github.com/ctuong/CS244.git"
+7. Run "cd CS244"
+8. Run "sudo sh install.sh"
+9. Run "sudo sh run.sh"
+10. Graphs result-p.png will be created, where p = 0.25, 0.5, 0.75, and 1
+11. result-throughputx.txt will be created, where x = 1, 2, and 8

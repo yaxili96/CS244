@@ -13,7 +13,7 @@ from mininet.cli import CLI
 
 from ripl.ripl.dctopo import FatTreeTopo, JellyfishTopo
 
-from ripl.ripl.routing import KSPRouting, ECMPRouting, HashedStructuredRouting
+from ripl.ripl.routing import KSPRouting, ECMPRouting, HashedStructuredRouting, RandomStructuredRouting
 
 import shlex
 
@@ -146,7 +146,8 @@ def write_counts(counts, filename):
 ROUTING = { 
     'ksp' : KSPRouting,
     'ecmp' : ECMPRouting,
-    'hashed' : HashedStructuredRouting
+    'hashed' : HashedStructuredRouting,
+    'random' : RandomStructuredRouting
 }
 
 def links_experiment(topo, tp, routing):
@@ -174,7 +175,7 @@ def links_experiment(topo, tp, routing):
 def start_receiver(net, receiver):
     r = net.getNodeByName(receiver)
     print "Starting server at %s" % receiver
-    r.popen("%s -s -p %s > %s/iperf_server%s.txt" %
+    r.cmd("%s -s -p %s > %s/iperf_server%s.txt &" %
              (CUSTOM_IPERF_PATH, 5001, args.dir, receiver), shell=True)
 
 def start_sender(net, sender, receiver, flow):
@@ -184,7 +185,8 @@ def start_sender(net, sender, receiver, flow):
     r = net.getNodeByName(receiver)
     
     print "Starting connection between %s and %s" % (sender, receiver)
-    s.popen("%s -c %s -p %s -t %d -i 1 -yc -Z %s > %s/iperf_client%s-%s-%s.txt" % (CUSTOM_IPERF_PATH, r.IP(), 5001, seconds, args.cong, args.dir, sender, receiver, str(flow)), shell=True)
+    s.sendCmd("%s -c %s -p %s -t %d -i 1 -yc -Z %s > %s/iperf_client%s-%s-%s.txt &" % (CUSTOM_IPERF_PATH, r.IP(), 5001, seconds, args.cong, args.dir, sender, receiver, str(flow)))
+    s.waitOutput()
 
 def stop_iperf(net, host):
     h = net.getNodeByName(host)
@@ -205,6 +207,8 @@ def throughput_experiment(net, topo, flows):
     for host in hosts:
         start_receiver(net, host)
 
+    net.getNodeByName(hosts[0]).popen("ping " + net.getNodeByName(hosts[1]).IP() + " -c 5 -i 0.1 > ping.txt", shell=True)
+
     start = time()
 
     receivers = hosts[:]
@@ -219,13 +223,13 @@ def throughput_experiment(net, topo, flows):
             if hosts[i] == receivers[i]:
                 match = False
                 break
-            
+
     for i in range(len(hosts)):
         for j in range(flows):
             start_sender(net, hosts[i], receivers[i], j)
     
     succeeded = 0
-    wait_time = 300
+    wait_time = 120
     while wait_time > 0 and succeeded != len(hosts) * flows:
         wait_time -= 1
         succeeded = count_connections()
@@ -237,6 +241,12 @@ def throughput_experiment(net, topo, flows):
     #    stop_iperf(net, host)
 
     sleep(40)
+
+    '''
+    for host in hosts:
+        h = net.getNodeByName(host)
+        h.waitOutput()
+    '''
 
     os.system('killall -9 ' + CUSTOM_IPERF_PATH)
 
