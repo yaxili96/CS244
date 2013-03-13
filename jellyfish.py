@@ -23,7 +23,7 @@ from multiprocessing import Process
 from argparse import ArgumentParser
 from random import randrange, seed, random, shuffle
 
-#from monitor import monitor_qlen
+from monitor import monitor_devs_ng
 import termcolor as T
 
 import sys
@@ -198,8 +198,8 @@ def count_connections():
 
 def throughput_experiment(net, topo, flows):
 
-#    monitor = Process(target=monitor_devs_ng, args=('%s/bwm.txt' % outputfolder, 1.0))
-#    monitor.start()
+    monitor = Process(target=monitor_devs_ng, args=('%s/bwm.txt' % args.dir, 1.0))
+    monitor.start()
 
     hosts = topo.hosts()
     for host in hosts:
@@ -243,8 +243,8 @@ def throughput_experiment(net, topo, flows):
     end = time()
     print "\nExperiment took %.3f seconds to complete" % (end - start)
 
-#    monitor.terminate()
-#    os.system("killall -9 bwm-ng")
+    monitor.terminate()
+    os.system("killall -9 bwm-ng")
     
 #    os.system('killall -9 iperf' )
 
