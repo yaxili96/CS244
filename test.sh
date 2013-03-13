@@ -6,15 +6,15 @@
 #    python plot_links.py -dir link_results -o result-$i.png -p $i
 #done
 
-for f in 1 8; do
+for f in 8; do
     #for i in 1 2 3 4 5; do
     for i in 1; do
-	#python jellyfish.py -t jf -r ksp -dir tp_results_jf_ksp_$i -nse 16 -nsw 20 -np 4 -e t -f $f
-	#python jellyfish.py -t jf -r ecmp -dir tp_results_jf_ecmp_$i -nse 16 -nsw 20 -np 4 -e t -f $f
+	python jellyfish.py -t jf -r ksp -dir tp_results_jf_ksp_$i -nse 16 -nsw 20 -np 4 -e t -f $f
+	python jellyfish.py -t jf -r ecmp -dir tp_results_jf_ecmp_$i -nse 16 -nsw 20 -np 4 -e t -f $f
 	#python jellyfish.py -t ft -r ksp -np 4 -dir tp_results_ft_ksp_$i -e t -f $f
-	python jellyfish.py -t ft -r ecmp -np 4 -dir tp_results_ft_ecmp_$i -e t -f $f
+	#python jellyfish.py -t ft -r ecmp -np 4 -dir tp_results_ft_ecmp_$i -e t -f $f
     done
 
     python compile_throughput.py -dir tp_results -o result-throughput$f.txt
-    rm -r tp_results* # so second run does not double count files
+    #rm -r tp_results* # so second run does not double count files
 done
