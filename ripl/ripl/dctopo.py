@@ -684,7 +684,7 @@ class JellyfishTopo(StructuredTopo):
         super(JellyfishTopo, self).__init__(node_specs, edge_specs)
 
         # assume that there are at least as many switches as servers
-        assert(self.nSwitches >= self.nServers)
+        # assert(self.nSwitches >= self.nServers)
         # assume the number of ports per switch is greater than 1
         assert(nPorts > 1)
 
