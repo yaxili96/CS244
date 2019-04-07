@@ -12,6 +12,8 @@ enumerate up, down, and layer edges.
 '''
 
 from mininet.topo import Topo
+import networkx as nx
+from copy import deepcopy
 from random import randrange, choice, seed
 import math
 
@@ -312,44 +314,57 @@ class FatTreeTopo(StructuredTopo):
         @param k switch degree
         @param speed bandwidth in Gbps
         '''
+        # up_total, down_total, up_speed, down_speed, type_str
         core = StructuredNodeSpec(0, k, None, speed, type_str = 'core')
         agg = StructuredNodeSpec(k / 2, k / 2, speed, speed, type_str = 'agg')
         edge = StructuredNodeSpec(k / 2, k / 2, speed, speed,
                                   type_str = 'edge')
         host = StructuredNodeSpec(1, 0, speed, None, type_str = 'host')
         node_specs = [core, agg, edge, host]
+        # speed 
         edge_specs = [StructuredEdgeSpec(speed)] * 3
         super(FatTreeTopo, self).__init__(node_specs, edge_specs)
 
         self.k = k
+        # pod = 0, sw = 0, host = 0, dpid = None, name = None
+        # @param pod pod ID
+        # @param sw switch ID
+        # @param host host ID
         self.id_gen = FatTreeTopo.FatTreeNodeID
         self.numPods = k
         self.aggPerPod = k / 2
 
+        # k pods 
         pods = range(0, k)
+        # (K/2)
         core_sws = range(1, k / 2 + 1)
+        # (K/2)
         agg_sws = range(k / 2, k)
+        # (K/2)
         edge_sws = range(0, k / 2)
+        # (K/2)
         hosts = range(2, k / 2 + 2)
 
+        # for each pods
         for p in pods:
+            # for each edge swtich
             for e in edge_sws:
                 edge_id = self.id_gen(p, e, 1).name_str()
                 edge_opts = self.def_nopts(self.LAYER_EDGE, edge_id)
                 self.addSwitch(edge_id, **edge_opts)
-
+                # every edge switch connect to K / 2 hosts
                 for h in hosts:
                     host_id = self.id_gen(p, e, h).name_str()
                     host_opts = self.def_nopts(self.LAYER_HOST, host_id)
                     self.addHost(host_id, **host_opts)
                     self.addLink(host_id, edge_id)
-
+                # every edge switch connect to K / 2 agg swtich
                 for a in agg_sws:
                     agg_id = self.id_gen(p, a, 1).name_str()
                     agg_opts = self.def_nopts(self.LAYER_AGG, agg_id)
                     self.addSwitch(agg_id, **agg_opts)
                     self.addLink(edge_id, agg_id)
-
+            # for each agg_sws
             for a in agg_sws:
                 agg_id = self.id_gen(p, a, 1).name_str()
                 c_index = a - k / 2 + 1
@@ -418,6 +433,169 @@ class FatTreeTopo(StructuredTopo):
 
         return (src_port, dst_port)
   
+class XPanderTopo(StructuredTopo):
+    ''' Xpander topology, based on FatTreeTopo above. '''
+
+    LAYER_EDGE = 0
+    LAYER_HOST = 1 
+    
+    class XPanderNodeID(NodeID):
+        ''' XPander node, based on FatTree node above '''
+
+        def __init__(self, sw = 0, host = 0, dpid = None, name = None):
+            '''Create XPanderNodeID object from custom params.
+
+            Either (sw, host) or dpid must be passed in.
+
+            @param sw switch ID
+            @param host host ID
+            @param dpid optional dpid
+            @param name optional name
+            '''
+
+            if dpid:
+                self.sw = (dpid & 0xff00) >> 8
+                self.host = (dpid & 0xff)
+                self.dpid = dpid
+            elif name:
+                if name[0] == 'h':
+                    self.host = int(name[1:])
+                else:
+                    self.host = 0xff
+                self.sw = int(name[1:])
+                self.dpid = (self.sw << 8) + self.host
+            else:
+                self.sw = sw
+                self.host = host
+                self.dpid = (sw << 8) + host
+        
+        def __str__(self):
+            return "(%i, %i)" % (self.sw, self.host)
+
+        def name_str(self):
+            '''Return name string'''
+            if self.host == 0xff:
+                return "s%i" % (self.sw)
+            return "h%i" % (self.host)
+
+        def mac_str(self):
+            '''Return MAC string'''
+            return "00:00:00:00:%02x:%02x" % (self.sw, self.host)
+
+        def ip_str(self):
+            '''Return IP string'''
+            return "10.0.%i.%i" % (self.sw, self.host)
+
+        def dpid_str(self):
+            '''Return dpid string'''
+            return str(self.dpid)
+    
+    def def_nopts(self, generated_id, layer):
+        d = { 'dpid' : "%016x" % generated_id.dpid }
+        d.update({ 'layer' : layer })
+        if layer == self.LAYER_HOST:
+            d.update({ 'ip' : generated_id.ip_str() })
+            d.update({ 'mac' : generated_id.mac_str() })
+        return d
+
+    # Calculate how many times we should do k-lifting
+    def calculate_lifting_times(self):
+        self.num_of_lifting = math.log(math.ceil(self.nSwitches / self.init_group_num), self.k)
+        self.num_of_lifting = int(math.ceil(self.num_of_lifting))
+        self.nSwitches = int(math.pow(self.k, self.num_of_lifting) * self.init_group_num)
+
+    
+    def __init__(self, nServers, ServerPerSiwtch, nPorts, k, speed = 1.0):
+        '''Init.
+
+        @param nServers: number of servers, default 16
+        @param nSwitches: number of switches, default 20
+        @param nPorts: number of ports, default 4
+        @param k: lifting parameter (how many copies of an original node after a lifting)
+        '''
+        self.nServers = nServers
+        self.nSwitches = math.ceil(nServers / ServerPerSiwtch)
+        self.nPorts = nPorts
+
+        downlinks = ServerPerSiwtch
+        uplinks = self.nPorts - downlinks
+        # up_total, down_total, up_speed, down_speed, type_str
+        edge = StructuredNodeSpec(uplinks, downlinks, speed, speed, 'edge')
+        host = StructuredNodeSpec(1, 0, speed, None, 'host')
+        node_specs = [edge, host]
+
+        edge_specs = [StructuredEdgeSpec(speed)] * 3
+        super(XPanderTopo, self).__init__(node_specs, edge_specs)
+
+        
+
+        # assume that there are at least as many switches as servers
+        # stupid ....
+        # assert(self.nSwitches >= self.nServers)
+        # assume the number of ports per switch is greater than 1
+        assert(nPorts > 1)
+        
+        #  @param sw switch ID
+        #  @param host host ID
+        self.id_gen = XPanderTopo.JellyfishNodeID
+
+        self.degree = uplinks
+        self.init_group_num = self.degree + 1
+        self.k = k 
+        self.calculate_lifting_times()
+
+        # add the servers
+        servers = []
+        for i in range(1, self.nServers + 1):
+            switch_num = (i - 1) % ServerPerSiwtch + 1
+            host = self.id_gen(switch_num, i)
+            opts = self.def_nopts(host, self.LAYER_HOST)
+            servers.append(self.addHost(host.name_str(), **opts))
+
+        # add the switches
+        switches = []
+        for i in range(1, self.nSwitches + 1):
+            switch = self.id_gen(i, 0xff)
+            opts = self.def_nopts(switch, self.LAYER_EDGE)
+            switches.append(self.addSwitch(switch.name_str(), **opts))
+
+        # connect each server with a switch
+        for i in range(self.nServers):
+            switch_num = i % ServerPerSiwtch
+            self.addLink(servers[i], switches[switch_num]) #delay, bandwidth?
+
+        # generate a node with d degree. which means this graph has d+1 nodes
+        self.graph = self.get_regular_graph(self.degree)
+        for _ in range(self.num_of_lifting):
+            # self.draw()
+            self.k_lifting()
+
+        for link in self.graph.edges():
+            # prevent double counting
+            if link[0] < link[1]:
+                self.addLink(switches[link[0]], switches[link[1]])
+
+    def get_regular_graph(self, d):
+        return nx.random_regular_graph(d, d + 1)
+    
+    def k_lifting(self):
+        # expand the node index of original nodes
+        mapping = {i : self.k * i for i in self.graph.nodes()}
+        self.graph = nx.relabel_nodes(self.graph, mapping)
+        copied_graph = deepcopy(self.graph)
+        # insert new nodes into the graph
+        for i in copied_graph.nodes():
+            for j in range(1, self.k):
+                self.graph.add_node(i + j)
+        # create random connections
+        for u, v in copied_graph.edges():
+            self.graph.remove_edge(u, v)
+            permute = np.random.permutation(self.k)
+            for i1, i2 in enumerate(permute):
+                self.graph.add_edge(u + i1, v + i2)
+
+
+
 class JellyfishTopo(StructuredTopo):
     '''Jellyfish topology, based on FatTreeTopo above.'''
 
@@ -482,38 +660,44 @@ class JellyfishTopo(StructuredTopo):
             d.update({ 'mac' : generated_id.mac_str() })
         return d
 
-    def __init__(self, nServers = 16, nSwitches = 20, nPorts = 4, s = 0, speed = 1.0):
+    def __init__(self, nServers = 16, ServerPerSiwtch = 20, nPorts = 4, s = 0, speed = 1.0):
         '''Init.
 
         @param nServers number of servers, default 16
-        @param nSwitches number of switches, default 20
+        @param ServerPerSiwtch number of server per switch, default 20
         @param nPorts number of ports, default 4
         @param s seed to use for RNG
         '''
         self.nServers = nServers
-        self.nSwitches = nSwitches
+        self.nSwitches = math.ceil(nServers / ServerPerSiwtch)
         self.nPorts = nPorts
         seed(s)
 
-        downlinks = math.ceil(float(self.nServers) / self.nSwitches)
+        downlinks = ServerPerSiwtch
         uplinks = self.nPorts - downlinks
+        # up_total, down_total, up_speed, down_speed, type_str
         edge = StructuredNodeSpec(uplinks, downlinks, speed, speed, 'edge')
         host = StructuredNodeSpec(1, 0, speed, None, 'host')
         node_specs = [edge, host]
+
         edge_specs = [StructuredEdgeSpec(speed)] * 3
         super(JellyfishTopo, self).__init__(node_specs, edge_specs)
 
         # assume that there are at least as many switches as servers
-        assert(nSwitches >= nServers)
+        assert(self.nSwitches >= self.nServers)
         # assume the number of ports per switch is greater than 1
         assert(nPorts > 1)
 
+        #  @param sw switch ID
+        #  @param host host ID
         self.id_gen = JellyfishTopo.JellyfishNodeID
+
 
         # add the servers
         servers = []
         for i in range(1, self.nServers + 1):
-            host = self.id_gen(i, i)
+            switch_num = (i - 1) % ServerPerSiwtch + 1 
+            host = self.id_gen(switch_num, i)
             opts = self.def_nopts(host, self.LAYER_HOST)
             servers.append(self.addHost(host.name_str(), **opts))
 
@@ -528,7 +712,8 @@ class JellyfishTopo(StructuredTopo):
 
         # connect each server with a switch
         for i in range(self.nServers):
-            self.addLink(servers[i], switches[i]) #delay, bandwidth?
+            switch_num = i % ServerPerSiwtch  
+            self.addLink(servers[i], switches[switch_num]) #delay, bandwidth?
             openPorts[i] -= 1
 
         # manage the potential links, fully populate the set before creating
